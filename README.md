@@ -4,7 +4,7 @@
 
 ## オンライン版
 
-GitHub Pages: https://kmmn1025-ai.github.io/samashiki-freeze-queen/
+GitHub Pages: https://kj-games-sama-nada.github.io/samashiki-freeze-queen/
 
 ## 起動方法
 
