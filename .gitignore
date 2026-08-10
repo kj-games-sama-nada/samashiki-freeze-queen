@@ -1,0 +1,14 @@
+# Development-only reference material
+assets/references/
+
+# Local project instructions and launch shortcuts
+AGENTS.md.txt
+*.url
+
+# Temporary browser/test files
+.browser-test-profile/
+tmp/
+
+# Operating-system files
+Thumbs.db
+.DS_Store

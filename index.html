@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#10182f">
+  <title>さまちゃんと凍結の女王</title>
+  <link rel="icon" href="data:,">
+  <link rel="preload" href="assets/images/sama.png?v=phase1-pixel-final-5" as="image">
+  <link rel="preload" href="assets/images/enemy.png?v=enemy-4dir-1" as="image">
+  <link rel="preload" href="assets/images/ice-statue.png?v=enemy-4dir-1" as="image">
+  <link rel="preload" href="assets/images/freeze-shot.png?v=phase1-pixel-final-5" as="image">
+  <link rel="stylesheet" href="style.css?v=stage2-tree-1">
+</head>
+<body>
+  <main id="game-shell" aria-label="さまちゃんと凍結の女王">
+    <section id="game-wrap">
+      <div id="game" aria-label="ゲーム画面"></div>
+      <div id="hud" aria-live="polite">
+        <div class="hud-item"><span>さまちゃん</span><strong id="player-life">♥♥♥♥♥</strong></div>
+        <div class="hud-item enemy"><span id="enemy-label">敵</span><strong id="enemy-life">♥♥♥♥♥</strong></div>
+        <div class="hud-item gauge"><span>必殺</span><div><i id="special-fill"></i></div></div>
+      </div>
+      <div id="stage-label">STAGE 1</div>
+      <div id="result" class="hidden" role="dialog" aria-modal="true">
+        <h1 id="result-title">STAGE 1 CLEAR!</h1>
+        <p id="result-message">敵を完全に凍結しました</p>
+        <div class="result-actions">
+          <button id="next-stage-button" class="hidden" type="button">STAGE 2へ</button>
+          <button id="retry-button" type="button">もう一度</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="touch-controls" aria-label="タッチ操作">
+      <div class="dpad">
+        <button class="control up" data-direction="up" aria-label="上">▲</button>
+        <button class="control left" data-direction="left" aria-label="左">◀</button>
+        <button class="control right" data-direction="right" aria-label="右">▶</button>
+        <button class="control down" data-direction="down" aria-label="下">▼</button>
+      </div>
+      <div class="actions">
+        <button id="special-button" class="action special" type="button" disabled aria-label="必殺技（0パーセント）">
+          <small>0%</small>必殺
+        </button>
+        <button id="attack-button" class="action attack" type="button" aria-label="凍結攻撃">凍結<small>Z</small></button>
+      </div>
+    </section>
+  </main>
+
+  <noscript>このゲームにはJavaScriptが必要です。</noscript>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
+  <script src="src/config.js?v=stage2-tree-1"></script>
+  <script src="src/main.js?v=stage2-tree-1"></script>
+</body>
+</html>
