@@ -1090,6 +1090,29 @@
     }
   }
 
+  let viewportSyncFrame = 0;
+
+  function syncViewportSize() {
+    const viewport = window.visualViewport;
+    const width = Math.max(1, Math.round(viewport?.width || window.innerWidth));
+    const height = Math.max(1, Math.round(viewport?.height || window.innerHeight));
+    document.documentElement.style.setProperty("--app-width", `${width}px`);
+    document.documentElement.style.setProperty("--app-height", `${height}px`);
+  }
+
+  function scheduleViewportSync() {
+    window.cancelAnimationFrame(viewportSyncFrame);
+    viewportSyncFrame = window.requestAnimationFrame(syncViewportSize);
+  }
+
+  function bindViewportSize() {
+    syncViewportSize();
+    window.addEventListener("resize", scheduleViewportSync, { passive: true });
+    window.addEventListener("orientationchange", scheduleViewportSync, { passive: true });
+    window.visualViewport?.addEventListener("resize", scheduleViewportSync, { passive: true });
+    window.visualViewport?.addEventListener("scroll", scheduleViewportSync, { passive: true });
+  }
+
   function bindControls() {
     document.querySelectorAll("[data-direction]").forEach((button) => {
       const direction = button.dataset.direction;
@@ -1108,10 +1131,10 @@
         inputState[direction] = false;
         button.classList.remove("pressed");
       };
-      button.addEventListener("pointerdown", press);
-      button.addEventListener("pointerup", release);
-      button.addEventListener("pointercancel", release);
-      button.addEventListener("lostpointercapture", release);
+      button.addEventListener("pointerdown", press, { passive: false });
+      button.addEventListener("pointerup", release, { passive: false });
+      button.addEventListener("pointercancel", release, { passive: false });
+      button.addEventListener("lostpointercapture", release, { passive: false });
     });
 
     const attackButton = document.getElementById("attack-button");
@@ -1119,7 +1142,12 @@
       event.preventDefault();
       requestAttack = true;
       attackButton.classList.add("pressed");
-    });
+      try {
+        attackButton.setPointerCapture?.(event.pointerId);
+      } catch {
+        // 合成イベントでは実ポインターのcaptureが不要な場合がある。
+      }
+    }, { passive: false });
     ["pointerup", "pointercancel", "pointerleave"].forEach((name) => {
       attackButton.addEventListener(name, () => attackButton.classList.remove("pressed"));
     });
@@ -1130,7 +1158,12 @@
       if (specialButton.disabled) return;
       requestSpecial = true;
       specialButton.classList.add("pressed");
-    });
+      try {
+        specialButton.setPointerCapture?.(event.pointerId);
+      } catch {
+        // 合成イベントでは実ポインターのcaptureが不要な場合がある。
+      }
+    }, { passive: false });
     ["pointerup", "pointercancel", "pointerleave"].forEach((name) => {
       specialButton.addEventListener(name, () => specialButton.classList.remove("pressed"));
     });
@@ -1154,9 +1187,13 @@
     ["touchmove", "gesturestart"].forEach((eventName) => {
       document.addEventListener(eventName, (event) => event.preventDefault(), { passive: false });
     });
+    document.querySelectorAll(".control, .action").forEach((button) => {
+      button.addEventListener("contextmenu", (event) => event.preventDefault());
+    });
   }
 
   window.addEventListener("load", () => {
+    bindViewportSize();
     bindControls();
     game = new Phaser.Game({
       type: Phaser.AUTO,

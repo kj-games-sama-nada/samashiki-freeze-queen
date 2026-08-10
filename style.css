@@ -1,7 +1,11 @@
 :root {
   color-scheme: dark;
   font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-  --control-size: clamp(44px, 9.5vw, 64px);
+  --app-width: 100vw;
+  --app-height: 100vh;
+  --control-size: clamp(44px, calc(var(--app-height) * .17), 64px);
+  --attack-size: clamp(56px, calc(var(--app-height) * .21), 82px);
+  --special-size: clamp(48px, calc(var(--app-height) * .18), 68px);
   --ice-line: #9beaff;
   --ice-light: #e4fbff;
   --panel: rgba(5, 20, 41, .88);
@@ -15,8 +19,8 @@
 
 html,
 body {
-  width: 100%;
-  height: 100%;
+  width: var(--app-width);
+  height: var(--app-height);
   margin: 0;
   overflow: hidden;
   overscroll-behavior: none;
@@ -26,20 +30,31 @@ body {
 }
 
 body {
-  display: grid;
-  place-items: center;
+  position: fixed;
+  inset: 0;
 }
 
 #game-shell {
-  width: min(100vw, calc(100vh * 16 / 9));
-  height: min(100vh, calc(100vw * 9 / 16));
-  min-height: 180px;
-  position: relative;
+  width: var(--app-width);
+  height: var(--app-height);
+  position: fixed;
+  inset: 0;
   overflow: hidden;
   background: #10182f;
 }
 
-#game-wrap,
+#game-wrap {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(var(--app-width), calc(var(--app-height) * 16 / 9));
+  height: min(var(--app-height), calc(var(--app-width) * 9 / 16));
+  min-width: 320px;
+  min-height: 180px;
+  transform: translate(-50%, -50%);
+  overflow: hidden;
+}
+
 #game,
 #game canvas {
   position: absolute;
@@ -201,16 +216,18 @@ body {
 }
 
 #touch-controls {
-  position: absolute;
+  position: fixed;
   z-index: 5;
   inset: 0;
+  width: var(--app-width);
+  height: var(--app-height);
   pointer-events: none;
 }
 
 .dpad {
   position: absolute;
-  left: max(12px, env(safe-area-inset-left));
-  bottom: max(10px, env(safe-area-inset-bottom));
+  left: max(16px, calc(env(safe-area-inset-left) + 8px));
+  bottom: max(14px, calc(env(safe-area-inset-bottom) + 8px));
   width: calc(var(--control-size) * 3);
   height: calc(var(--control-size) * 2);
   display: grid;
@@ -219,12 +236,18 @@ body {
 
 .control,
 .action {
+  margin: 0;
+  padding: 0;
   pointer-events: auto;
+  appearance: none;
+  -webkit-appearance: none;
   border: 2px solid rgba(221, 250, 255, .9);
   color: #eafaff;
   background: linear-gradient(180deg, rgba(48, 105, 139, .84), rgba(11, 38, 72, .88));
   font-weight: 900;
   touch-action: none;
+  -webkit-touch-callout: none;
+  user-select: none;
   text-shadow: 0 2px #0b2749;
   box-shadow:
     inset 0 1px rgba(255, 255, 255, .2),
@@ -246,16 +269,16 @@ body {
 
 .actions {
   position: absolute;
-  right: max(14px, env(safe-area-inset-right));
-  bottom: max(12px, env(safe-area-inset-bottom));
+  right: max(16px, calc(env(safe-area-inset-right) + 8px));
+  bottom: max(14px, calc(env(safe-area-inset-bottom) + 8px));
   display: flex;
   align-items: flex-end;
   gap: clamp(8px, 2.5vw, 20px);
 }
 
 .action {
-  width: clamp(54px, 12vw, 82px);
-  height: clamp(54px, 12vw, 82px);
+  width: var(--attack-size);
+  height: var(--attack-size);
   border-radius: 50%;
   font-size: clamp(12px, 2.8vw, 18px);
 }
@@ -266,8 +289,8 @@ body {
 }
 
 .action.special {
-  width: clamp(46px, 10vw, 68px);
-  height: clamp(46px, 10vw, 68px);
+  width: var(--special-size);
+  height: var(--special-size);
   opacity: .5;
   filter: saturate(.55);
 }
@@ -310,4 +333,11 @@ body {
   .result-actions { gap: 6px; }
   #retry-button,
   #next-stage-button { min-width: 112px; padding: 7px 10px; }
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --app-width: 100dvw;
+    --app-height: 100dvh;
+  }
 }
