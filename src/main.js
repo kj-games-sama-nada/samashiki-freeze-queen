@@ -380,6 +380,10 @@
         strokeThickness: 3
       }).setOrigin(0.5).setDepth(6).setVisible(false);
 
+      if (wakeDelayMs > 0) {
+        enemy.statusText.setText(`準備中 ${Math.ceil(wakeDelayMs / 1000)}`).setVisible(true);
+      }
+
       this.setEnemyIdleFrame(enemy);
       this.applyEnemyFreezeTint(enemy);
       return enemy;
@@ -516,9 +520,15 @@
       if (enemy.aiState === "sleeping") {
         enemy.setVelocity(0);
         this.updateEnemyAnimation(enemy, false);
+        const remainingSeconds = Math.max(1, Math.ceil((enemy.wakeAt - time) / 1000));
+        enemy.statusText.setText(`準備中 ${remainingSeconds}`).setAlpha(0.82).setVisible(true);
         if (time >= enemy.wakeAt) {
           enemy.aiState = "chase";
           enemy.nextDashAt = time + 500;
+          enemy.statusText.setText("参戦!").setAlpha(1).setVisible(true);
+          this.time.delayedCall(650, () => {
+            if (enemy.active && enemy.statusText?.text === "参戦!") enemy.statusText.setVisible(false);
+          });
         }
         return;
       }
@@ -550,7 +560,7 @@
         if (time >= enemy.aiStateUntil) {
           this.hideEnemyStatus(enemy);
           enemy.aiState = "chase";
-          enemy.nextDashAt = time + this.getEnemyPhase(enemy).cooldownMs;
+          enemy.nextDashAt = time + this.getEnemyDashCooldown(enemy);
         }
         return;
       }
@@ -571,6 +581,13 @@
         enemy.setVelocity(0);
         this.updateEnemyAnimation(enemy, false);
       }
+    }
+
+    getEnemyDashCooldown(enemy) {
+      const baseCooldown = this.getEnemyPhase(enemy).cooldownMs;
+      const lastEnemyMultiplier = this.stageData.lastEnemyCooldownMultiplier;
+      if (!lastEnemyMultiplier || this.enemies.countActive(true) !== 1) return baseCooldown;
+      return Math.round(baseCooldown * lastEnemyMultiplier);
     }
 
     beginDashWarning(enemy, time, isChain) {
@@ -637,7 +654,7 @@
       }
       this.hideEnemyStatus(enemy);
       enemy.aiState = "chase";
-      enemy.nextDashAt = time + this.getEnemyPhase(enemy).cooldownMs;
+      enemy.nextDashAt = time + this.getEnemyDashCooldown(enemy);
     }
 
     onEnemyWall(first, second) {
@@ -1040,7 +1057,7 @@
       const hasNextStage = this.stageIndex < S.stages.length - 1;
 
       if (type === "clear") {
-        title.textContent = `${this.stageData.name} CLEAR!`;
+        title.textContent = this.stageData.finalTitle || `${this.stageData.name} CLEAR!`;
         message.textContent = hasNextStage
           ? `必殺ゲージを引き継いで${S.stages[this.stageIndex + 1].name}へ進みます`
           : "すべてのニットちゃんを完全に凍結しました";

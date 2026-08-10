@@ -190,6 +190,33 @@
         pickups: [
           { type: "shineMuscat", x: 144, y: 176 }
         ]
+      },
+      {
+        id: 3,
+        name: "STAGE 3",
+        finalTitle: "ALL STAGES CLEAR",
+        lastEnemyCooldownMultiplier: 0.82,
+        playerStart: { x: 96, y: 180 },
+        wallRects: [
+          [0, 0, 640, 32], [0, 328, 640, 32], [0, 0, 32, 360], [608, 0, 32, 360],
+          [224, 64, 64, 64], [224, 232, 64, 64],
+          [384, 64, 64, 64], [384, 232, 64, 64],
+          [96, 80, 64, 32], [480, 224, 64, 32]
+        ],
+        floorDetails: [
+          [2, 4, "spark"], [4, 7, "frost"], [6, 3, "chip"], [8, 6, "spark"],
+          [10, 4, "frost"], [12, 6, "chip"], [14, 3, "spark"], [16, 5, "frost"],
+          [18, 8, "spark"], [5, 9, "chip"], [9, 8, "frost"], [13, 9, "spark"],
+          [17, 7, "chip"], [11, 5, "spark"]
+        ],
+        enemies: [
+          { x: 528, y: 88, direction: "left", tint: 0xff9fc7, dashDelayOffsetMs: 0, wakeDelayMs: 0 },
+          { x: 520, y: 180, direction: "left", tint: 0x9fffd0, dashDelayOffsetMs: 700, wakeDelayMs: 5000 },
+          { x: 528, y: 288, direction: "left", tint: 0xc7a7ff, dashDelayOffsetMs: 1200, wakeDelayMs: 11000 }
+        ],
+        pickups: [
+          { type: "shineMuscat", x: 336, y: 180 }
+        ]
       }
     ],
     colors: {
