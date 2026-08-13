@@ -7,6 +7,104 @@
   let requestSpecial = false;
   let game;
 
+  class SynthAudio {
+    constructor(settings) {
+      this.settings = settings;
+      this.enabled = settings.enabledByDefault;
+      this.context = null;
+      this.masterGain = null;
+      this.supported = Boolean(window.AudioContext || window.webkitAudioContext);
+    }
+
+    unlock() {
+      if (!this.enabled || !this.supported) return Promise.resolve(false);
+      try {
+        if (!this.context) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          this.context = new AudioContextClass();
+          this.masterGain = this.context.createGain();
+          this.masterGain.gain.setValueAtTime(this.settings.masterVolume, this.context.currentTime);
+          this.masterGain.connect(this.context.destination);
+        }
+        const resumeResult = this.context.state === "suspended" ? this.context.resume() : Promise.resolve();
+        return Promise.resolve(resumeResult).then(() => this.context.state === "running").catch(() => false);
+      } catch {
+        this.supported = false;
+        this.updateButton();
+        return Promise.resolve(false);
+      }
+    }
+
+    play(name) {
+      const sound = this.settings.sounds[name];
+      if (!this.enabled || !sound) return;
+      this.unlock().then((ready) => {
+        if (!ready || !this.enabled) return;
+        sound.notes.forEach((note) => this.playNote(note));
+      });
+    }
+
+    playNote(note) {
+      const now = this.context.currentTime;
+      const startAt = now + (note.offsetMs || 0) / 1000;
+      const endAt = startAt + note.durationMs / 1000;
+      const attackEnd = Math.min(endAt, startAt + this.settings.attackMs / 1000);
+      const releaseStart = Math.max(attackEnd, endAt - this.settings.releaseMs / 1000);
+      const oscillator = this.context.createOscillator();
+      const gain = this.context.createGain();
+
+      oscillator.type = note.wave || "square";
+      oscillator.frequency.setValueAtTime(note.frequency, startAt);
+      if (note.endFrequency) {
+        oscillator.frequency.exponentialRampToValueAtTime(Math.max(1, note.endFrequency), endAt);
+      }
+      gain.gain.setValueAtTime(0.0001, startAt);
+      gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, note.volume), attackEnd);
+      gain.gain.setValueAtTime(Math.max(0.0001, note.volume), releaseStart);
+      gain.gain.exponentialRampToValueAtTime(0.0001, endAt);
+      oscillator.connect(gain);
+      gain.connect(this.masterGain);
+      oscillator.start(startAt);
+      oscillator.stop(endAt + 0.02);
+    }
+
+    setEnabled(enabled) {
+      this.enabled = Boolean(enabled) && this.supported;
+      if (this.masterGain && this.context) {
+        this.masterGain.gain.cancelScheduledValues(this.context.currentTime);
+        this.masterGain.gain.setValueAtTime(
+          this.enabled ? this.settings.masterVolume : 0,
+          this.context.currentTime
+        );
+      }
+      this.updateButton();
+      if (this.enabled) this.unlock();
+    }
+
+    toggle() {
+      this.setEnabled(!this.enabled);
+    }
+
+    updateButton() {
+      const button = document.getElementById("sound-toggle");
+      if (!button) return;
+      if (!this.supported) {
+        button.textContent = "音 無効";
+        button.disabled = true;
+        button.setAttribute("aria-label", "このブラウザでは効果音を再生できません");
+        return;
+      }
+      button.disabled = false;
+      button.textContent = this.enabled ? "音 ON" : "音 OFF";
+      button.classList.toggle("muted", !this.enabled);
+      button.setAttribute("aria-pressed", String(this.enabled));
+      button.setAttribute("aria-label", this.enabled ? "効果音をオフにする" : "効果音をオンにする");
+    }
+  }
+
+  const audio = new SynthAudio(S.audio);
+  window.GAME_AUDIO = audio;
+
   function resetInputState() {
     Object.keys(inputState).forEach((key) => { inputState[key] = false; });
     requestAttack = false;
@@ -702,6 +800,7 @@
       shot.setAngle(angle).setVelocity(dx * S.attack.speed, dy * S.attack.speed);
       shot.spawnX = shot.x;
       shot.spawnY = shot.y;
+      audio.play("shot");
     }
 
     useSpecial() {
@@ -712,10 +811,11 @@
 
       this.specialGauge = 0;
       this.updateSpecialHud();
+      audio.play("special");
       this.createChristmasTreeSpecialEffect();
       this.cameras.main.flash(120, 190, 245, 255, false);
       this.createPixelBurst(this.player.x, this.player.y, S.special.ringColor, 1);
-      targets.forEach((enemy) => this.damageEnemy(enemy, S.special.damage, false));
+      targets.forEach((enemy) => this.damageEnemy(enemy, S.special.damage, false, false));
     }
 
     createChristmasTreeSpecialEffect() {
@@ -860,9 +960,10 @@
       this.damageEnemy(enemy, S.attack.damage, true);
     }
 
-    damageEnemy(enemy, damage, chargeGauge) {
+    damageEnemy(enemy, damage, chargeGauge, playImpactSound = true) {
       if (!enemy?.active || enemy.life <= 0) return;
       enemy.life = Math.max(0, enemy.life - damage);
+      if (playImpactSound) audio.play(enemy.life === 0 ? "freeze" : "hit");
       if (chargeGauge) this.gainSpecial(S.special.gainPerHit);
       this.createPixelBurst(enemy.x, enemy.y, 0xcdf8ff, 1);
       this.updateEnemyLifeVisual(enemy);
@@ -958,6 +1059,7 @@
       const response = S.player.damageResponse;
       this.nextContactAt = now + (response.invincibilityMs || S.enemy.contactCooldownMs);
       this.playerLife = Math.max(0, this.playerLife - S.enemy.contactDamage);
+      audio.play("damage");
       this.gainSpecial(S.special.gainOnDamage);
 
       let knockbackX = this.player.x - enemy.x;
@@ -1008,6 +1110,7 @@
       if (!pickup?.active || this.ended || this.playerLife >= S.player.life) return;
       const healed = Math.min(pickup.healAmount, S.player.life - this.playerLife);
       this.playerLife += healed;
+      audio.play("pickup");
       this.tweens.killTweensOf(pickup);
       this.tweens.killTweensOf(pickup.glow);
       pickup.glow?.destroy();
@@ -1040,6 +1143,7 @@
     finish(type) {
       if (this.ended) return;
       this.ended = true;
+      audio.play(type === "clear" ? "clear" : "gameover");
       this.enemies.getChildren().forEach((enemy) => {
         this.hideEnemyStatus(enemy);
         enemy.setVelocity(0);
@@ -1131,6 +1235,16 @@
   }
 
   function bindControls() {
+    const unlockAudio = () => audio.unlock();
+    document.addEventListener("pointerdown", unlockAudio, { capture: true, passive: true });
+    document.addEventListener("keydown", unlockAudio, { capture: true, passive: true });
+    const soundButton = document.getElementById("sound-toggle");
+    audio.updateButton();
+    soundButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      audio.toggle();
+    });
+
     document.querySelectorAll("[data-direction]").forEach((button) => {
       const direction = button.dataset.direction;
       const press = (event) => {

@@ -129,6 +129,35 @@ body {
   transition: width .12s linear;
 }
 
+#sound-toggle {
+  min-width: clamp(44px, 8vw, 62px);
+  min-height: clamp(30px, 7.2vw, 40px);
+  padding: 4px 7px;
+  pointer-events: auto;
+  border: 1px solid var(--ice-light);
+  border-radius: 3px;
+  color: #dffaff;
+  background: linear-gradient(180deg, rgba(30, 67, 97, .94), var(--panel));
+  font: inherit;
+  font-size: .76em;
+  font-weight: 900;
+  white-space: nowrap;
+  touch-action: none;
+  box-shadow: 0 0 0 2px rgba(70, 178, 211, .5), 0 3px 0 rgba(3, 10, 24, .55);
+}
+
+#sound-toggle.muted {
+  color: #91a9b8;
+  border-color: #718797;
+  background: rgba(7, 21, 40, .9);
+  box-shadow: 0 2px 0 rgba(3, 10, 24, .7);
+}
+
+#sound-toggle:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
 #stage-label {
   position: absolute;
   z-index: 3;

@@ -10,7 +10,7 @@
   <link rel="preload" href="assets/images/enemy.png?v=enemy-4dir-1" as="image">
   <link rel="preload" href="assets/images/ice-statue.png?v=enemy-4dir-1" as="image">
   <link rel="preload" href="assets/images/freeze-shot.png?v=phase1-pixel-final-5" as="image">
-  <link rel="stylesheet" href="style.css?v=mobile-controls-1">
+  <link rel="stylesheet" href="style.css?v=sfx-1">
 </head>
 <body>
   <main id="game-shell" aria-label="さまちゃんと凍結の女王">
@@ -20,6 +20,7 @@
         <div class="hud-item"><span>さまちゃん</span><strong id="player-life">♥♥♥♥♥</strong></div>
         <div class="hud-item enemy"><span id="enemy-label">敵</span><strong id="enemy-life">♥♥♥♥♥</strong></div>
         <div class="hud-item gauge"><span>必殺</span><div><i id="special-fill"></i></div></div>
+        <button id="sound-toggle" type="button" aria-label="効果音をオフにする" aria-pressed="true">音 ON</button>
       </div>
       <div id="stage-label">STAGE 1</div>
       <div id="result" class="hidden" role="dialog" aria-modal="true">
@@ -50,7 +51,7 @@
 
   <noscript>このゲームにはJavaScriptが必要です。</noscript>
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
-  <script src="src/config.js?v=stage3-1"></script>
-  <script src="src/main.js?v=stage3-1"></script>
+  <script src="src/config.js?v=sfx-1"></script>
+  <script src="src/main.js?v=sfx-1"></script>
 </body>
 </html>

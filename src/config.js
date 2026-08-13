@@ -137,6 +137,67 @@
         bobDurationMs: 620
       }
     },
+    audio: {
+      enabledByDefault: true,
+      masterVolume: 0.24,
+      attackMs: 8,
+      releaseMs: 28,
+      sounds: {
+        shot: {
+          notes: [
+            { frequency: 920, endFrequency: 470, durationMs: 85, wave: "square", volume: 0.28 }
+          ]
+        },
+        hit: {
+          notes: [
+            { frequency: 310, endFrequency: 190, durationMs: 70, wave: "square", volume: 0.24 },
+            { offsetMs: 38, frequency: 760, endFrequency: 540, durationMs: 65, wave: "triangle", volume: 0.18 }
+          ]
+        },
+        freeze: {
+          notes: [
+            { frequency: 440, endFrequency: 880, durationMs: 150, wave: "triangle", volume: 0.25 },
+            { offsetMs: 80, frequency: 660, endFrequency: 1320, durationMs: 210, wave: "sine", volume: 0.24 },
+            { offsetMs: 170, frequency: 1040, endFrequency: 1560, durationMs: 180, wave: "square", volume: 0.12 }
+          ]
+        },
+        damage: {
+          notes: [
+            { frequency: 180, endFrequency: 75, durationMs: 220, wave: "sawtooth", volume: 0.30 }
+          ]
+        },
+        pickup: {
+          notes: [
+            { frequency: 660, durationMs: 90, wave: "square", volume: 0.20 },
+            { offsetMs: 75, frequency: 880, durationMs: 95, wave: "square", volume: 0.22 },
+            { offsetMs: 150, frequency: 1320, durationMs: 145, wave: "triangle", volume: 0.23 }
+          ]
+        },
+        special: {
+          notes: [
+            { frequency: 196, endFrequency: 392, durationMs: 400, wave: "sawtooth", volume: 0.18 },
+            { offsetMs: 75, frequency: 523, durationMs: 250, wave: "square", volume: 0.18 },
+            { offsetMs: 150, frequency: 659, durationMs: 260, wave: "square", volume: 0.17 },
+            { offsetMs: 225, frequency: 784, endFrequency: 1568, durationMs: 420, wave: "triangle", volume: 0.24 }
+          ]
+        },
+        clear: {
+          notes: [
+            { frequency: 523, durationMs: 130, wave: "square", volume: 0.20 },
+            { offsetMs: 120, frequency: 659, durationMs: 130, wave: "square", volume: 0.20 },
+            { offsetMs: 240, frequency: 784, durationMs: 150, wave: "square", volume: 0.21 },
+            { offsetMs: 375, frequency: 1047, durationMs: 360, wave: "triangle", volume: 0.25 }
+          ]
+        },
+        gameover: {
+          notes: [
+            { frequency: 330, durationMs: 180, wave: "triangle", volume: 0.23 },
+            { offsetMs: 150, frequency: 247, durationMs: 210, wave: "triangle", volume: 0.23 },
+            { offsetMs: 330, frequency: 165, endFrequency: 82, durationMs: 430, wave: "sawtooth", volume: 0.25 }
+          ]
+        }
+      }
+    },
     effects: {
       shadow: { width: 24, height: 8, offsetY: 13, alpha: 0.34 },
       enemyLifeBar: { width: 30, height: 4, offsetY: -22 },
