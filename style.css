@@ -187,6 +187,8 @@ body {
   background: linear-gradient(#214f70, #0b2948);
   font: inherit;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
   box-shadow: 0 3px 0 #06162b;
 }
 
@@ -241,6 +243,8 @@ body {
   font-weight: 900;
   letter-spacing: .08em;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
   box-shadow: 0 4px 0 #1e7196, 0 0 14px rgba(115, 228, 255, .5);
 }
 

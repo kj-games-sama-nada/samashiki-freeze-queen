@@ -1431,7 +1431,7 @@
     });
 
     document.getElementById("title-button").addEventListener("click", showStartScreen);
-    document.getElementById("start-button").addEventListener("click", startGame);
+    bindTapAction(document.getElementById("start-button"), startGame);
     createDifficultyButtons();
 
     window.addEventListener("blur", resetInputState);
@@ -1444,6 +1444,23 @@
     });
     document.querySelectorAll(".control, .action").forEach((button) => {
       button.addEventListener("contextmenu", (event) => event.preventDefault());
+    });
+  }
+
+  function bindTapAction(button, action) {
+    let suppressClickUntil = 0;
+    button.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "mouse") return;
+      event.preventDefault();
+      suppressClickUntil = performance.now() + 800;
+      action();
+    }, { passive: false });
+    button.addEventListener("click", (event) => {
+      if (performance.now() < suppressClickUntil) {
+        event.preventDefault();
+        return;
+      }
+      action();
     });
   }
 
@@ -1462,7 +1479,7 @@
       const life = document.createElement("span");
       life.textContent = `♥ × ${difficulty.playerLife}`;
       button.append(label, life);
-      button.addEventListener("click", () => selectDifficulty(difficulty.id));
+      bindTapAction(button, () => selectDifficulty(difficulty.id));
       container.appendChild(button);
     });
     selectDifficulty(selectedDifficultyId);
