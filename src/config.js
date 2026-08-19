@@ -6,6 +6,29 @@
     width: 640,
     height: 360,
     tileSize: 32,
+    difficulty: {
+      defaultId: "normal",
+      options: {
+        easy: {
+          id: "easy",
+          label: "やさしい",
+          playerLife: 7,
+          description: "ライフ7。初めて遊ぶ人やステージ練習向け。"
+        },
+        normal: {
+          id: "normal",
+          label: "ふつう",
+          playerLife: 5,
+          description: "ライフ5。現在の標準バランスで遊びます。"
+        },
+        hard: {
+          id: "hard",
+          label: "むずかしい",
+          playerLife: 3,
+          description: "ライフ3。回避と攻撃の判断が重要になります。"
+        }
+      }
+    },
     player: {
       speed: 150,
       life: 5,
@@ -144,7 +167,8 @@
         path: "assets/audio/ave-maria-schubert-vocal.mp3",
         volume: 0.15,
         loop: true,
-        preload: "metadata"
+        preload: "auto",
+        startOffsetSeconds: 18
       },
       attackMs: 8,
       releaseMs: 28,

@@ -10,11 +10,32 @@
   <link rel="preload" href="assets/images/enemy.png?v=character-restore-1" as="image">
   <link rel="preload" href="assets/images/ice-statue.png?v=character-restore-1" as="image">
   <link rel="preload" href="assets/images/freeze-shot.png?v=character-restore-1" as="image">
-  <link rel="stylesheet" href="style.css?v=bgm-1">
+  <link rel="stylesheet" href="style.css?v=start-screen-1">
 </head>
 <body>
-  <main id="game-shell" aria-label="さまちゃんと凍結の女王">
+  <main id="game-shell" class="awaiting-start" aria-label="さまちゃんと凍結の女王">
     <section id="game-wrap">
+      <section id="start-screen" aria-labelledby="game-title">
+        <div class="start-card">
+          <p class="title-kicker">ICE ACTION GAME</p>
+          <div class="title-lockup">
+            <span class="title-sprite sama" aria-hidden="true"></span>
+            <h1 id="game-title"><span>さまちゃんと</span>凍結の女王</h1>
+            <span class="title-sprite knit" aria-hidden="true"></span>
+          </div>
+          <p class="title-lead">凍結攻撃でニットちゃんを氷像にしよう！</p>
+
+          <fieldset class="difficulty-select">
+            <legend>難易度を選択</legend>
+            <div id="difficulty-options" class="difficulty-options"></div>
+            <p id="difficulty-description" aria-live="polite"></p>
+          </fieldset>
+
+          <button id="start-button" type="button">ゲームスタート</button>
+          <p id="music-status" aria-live="polite">BGMを読み込み中…</p>
+          <p class="start-controls">PC：矢印キー・Z・X ／ スマホ：画面の操作ボタン</p>
+        </div>
+      </section>
       <div id="game" aria-label="ゲーム画面"></div>
       <div id="hud" aria-live="polite">
         <div class="hud-item"><span>さまちゃん</span><strong id="player-life">♥♥♥♥♥</strong></div>
@@ -30,6 +51,7 @@
         <div class="result-actions">
           <button id="next-stage-button" class="hidden" type="button">STAGE 2へ</button>
           <button id="retry-button" type="button">もう一度</button>
+          <button id="title-button" type="button">タイトルへ</button>
         </div>
       </div>
     </section>
@@ -52,7 +74,7 @@
 
   <noscript>このゲームにはJavaScriptが必要です。</noscript>
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
-  <script src="src/config.js?v=vocal-bgm-1"></script>
-  <script src="src/main.js?v=vocal-bgm-1"></script>
+  <script src="src/config.js?v=start-screen-1"></script>
+  <script src="src/main.js?v=start-screen-1"></script>
 </body>
 </html>

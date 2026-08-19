@@ -6,6 +6,18 @@
   let requestAttack = false;
   let requestSpecial = false;
   let game;
+  let selectedDifficultyId = S.difficulty?.defaultId || "normal";
+  let activeDifficultyId = selectedDifficultyId;
+
+  function getDifficulty(id) {
+    const options = S.difficulty?.options || {};
+    return options[id] || options[S.difficulty?.defaultId] || {
+      id: "normal",
+      label: "ふつう",
+      playerLife: S.player.life,
+      description: "標準バランスで遊びます。"
+    };
+  }
 
   class SynthAudio {
     constructor(settings) {
@@ -18,6 +30,8 @@
       this.musicAvailable = Boolean(this.music);
       this.userActivated = false;
       this.suspended = false;
+      this.musicRequested = false;
+      this.pendingStartOffset = false;
       this.supported = this.sfxSupported || this.musicAvailable;
 
       if (this.music) {
@@ -29,19 +43,27 @@
         this.music.hidden = true;
         this.music.setAttribute("aria-hidden", "true");
         document.body.appendChild(this.music);
+        this.music.addEventListener("loadedmetadata", () => {
+          if (this.pendingStartOffset) this.applyMusicStartOffset();
+        });
+        this.music.addEventListener("canplay", () => {
+          this.updateMusicStatus("BGM 準備完了");
+        });
         this.music.addEventListener("error", () => {
           this.musicAvailable = false;
           this.supported = this.sfxSupported;
           this.updateButton();
+          this.updateMusicStatus("BGMなしでもゲームを開始できます");
           console.warn("BGMを読み込めなかったため、効果音のみで続行します。");
         });
+        this.music.load();
       }
     }
 
     unlock() {
       this.userActivated = true;
       if (!this.enabled || !this.supported) return Promise.resolve(false);
-      this.startMusic();
+      if (this.musicRequested) this.startMusic();
       if (!this.sfxSupported) return Promise.resolve(true);
       try {
         if (!this.context) {
@@ -71,13 +93,48 @@
     }
 
     startMusic() {
-      if (!this.music || !this.musicAvailable || !this.enabled || this.suspended) {
+      if (!this.musicRequested || !this.music || !this.musicAvailable || !this.enabled || this.suspended) {
         return Promise.resolve(false);
       }
       if (!this.music.paused) return Promise.resolve(true);
       this.music.volume = this.settings.music.volume;
       const playResult = this.music.play();
       return Promise.resolve(playResult).then(() => true).catch(() => false);
+    }
+
+    applyMusicStartOffset() {
+      if (!this.music || !this.musicAvailable) return;
+      const requestedOffset = Math.max(0, Number(this.settings.music.startOffsetSeconds) || 0);
+      const maxOffset = Number.isFinite(this.music.duration)
+        ? Math.max(0, this.music.duration - 0.1)
+        : requestedOffset;
+      try {
+        this.music.currentTime = Math.min(requestedOffset, maxOffset);
+        this.pendingStartOffset = false;
+      } catch {
+        this.pendingStartOffset = true;
+      }
+    }
+
+    beginMusic(restartAtConfiguredOffset = false) {
+      this.musicRequested = true;
+      if (restartAtConfiguredOffset) {
+        this.pendingStartOffset = true;
+        this.applyMusicStartOffset();
+      }
+      return this.unlock().then(() => this.startMusic());
+    }
+
+    prepareForTitle() {
+      this.musicRequested = false;
+      this.music?.pause();
+      this.pendingStartOffset = true;
+      this.applyMusicStartOffset();
+    }
+
+    updateMusicStatus(message) {
+      const status = document.getElementById("music-status");
+      if (status) status.textContent = message;
     }
 
     playNote(note) {
@@ -124,7 +181,7 @@
       this.suspended = Boolean(suspended);
       if (this.suspended) {
         this.music?.pause();
-      } else if (this.enabled && this.userActivated) {
+      } else if (this.enabled && this.userActivated && this.musicRequested) {
         this.startMusic();
       }
     }
@@ -168,6 +225,9 @@
     init(data) {
       this.stageIndex = Number.isInteger(data?.stageIndex) ? data.stageIndex : 0;
       this.carrySpecialGauge = Number.isFinite(data?.specialGauge) ? data.specialGauge : 0;
+      this.difficultyId = data?.difficultyId || activeDifficultyId;
+      this.difficulty = getDifficulty(this.difficultyId);
+      this.maxPlayerLife = this.difficulty.playerLife;
     }
 
     preload() {
@@ -206,7 +266,7 @@
       this.physics.resume();
       this.ended = false;
       this.clearing = false;
-      this.playerLife = S.player.life;
+      this.playerLife = this.maxPlayerLife;
       this.specialGauge = Phaser.Math.Clamp(this.carrySpecialGauge, 0, S.special.maxGauge);
       this.lastDirection = S.player.startDirection;
       this.nextAttackAt = 0;
@@ -1155,8 +1215,8 @@
 
     onPickup(first, second) {
       const pickup = first === this.player ? second : first;
-      if (!pickup?.active || this.ended || this.playerLife >= S.player.life) return;
-      const healed = Math.min(pickup.healAmount, S.player.life - this.playerLife);
+      if (!pickup?.active || this.ended || this.playerLife >= this.maxPlayerLife) return;
+      const healed = Math.min(pickup.healAmount, this.maxPlayerLife - this.playerLife);
       this.playerLife += healed;
       audio.play("pickup");
       this.tweens.killTweensOf(pickup);
@@ -1231,7 +1291,7 @@
     }
 
     updateHud() {
-      document.getElementById("stage-label").textContent = this.stageData.name;
+      document.getElementById("stage-label").textContent = `${this.stageData.name} · ${this.difficulty.label}`;
       document.getElementById("player-life").textContent = "♥".repeat(this.playerLife) || "0";
       const activeEnemies = this.enemies.getChildren().filter((enemy) => enemy.active);
       const totalLife = activeEnemies.reduce((sum, enemy) => sum + enemy.life, 0);
@@ -1350,15 +1410,29 @@
 
     document.getElementById("retry-button").addEventListener("click", () => {
       resetInputState();
+      if (!game) return;
       const scene = game.scene.getScene("phase-one");
-      scene.scene.restart({ stageIndex: scene.stageIndex, specialGauge: 0 });
+      scene.scene.restart({
+        stageIndex: scene.stageIndex,
+        specialGauge: 0,
+        difficultyId: scene.difficultyId
+      });
     });
 
     document.getElementById("next-stage-button").addEventListener("click", () => {
       resetInputState();
+      if (!game) return;
       const scene = game.scene.getScene("phase-one");
-      scene.scene.restart({ stageIndex: scene.stageIndex + 1, specialGauge: scene.specialGauge });
+      scene.scene.restart({
+        stageIndex: scene.stageIndex + 1,
+        specialGauge: scene.specialGauge,
+        difficultyId: scene.difficultyId
+      });
     });
+
+    document.getElementById("title-button").addEventListener("click", showStartScreen);
+    document.getElementById("start-button").addEventListener("click", startGame);
+    createDifficultyButtons();
 
     window.addEventListener("blur", resetInputState);
     document.addEventListener("visibilitychange", () => {
@@ -1373,9 +1447,39 @@
     });
   }
 
-  window.addEventListener("load", () => {
-    bindViewportSize();
-    bindControls();
+  function createDifficultyButtons() {
+    const container = document.getElementById("difficulty-options");
+    container.replaceChildren();
+    Object.values(S.difficulty?.options || {}).forEach((difficulty) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "difficulty-button";
+      button.dataset.difficulty = difficulty.id;
+      button.setAttribute("aria-pressed", "false");
+
+      const label = document.createElement("strong");
+      label.textContent = difficulty.label;
+      const life = document.createElement("span");
+      life.textContent = `♥ × ${difficulty.playerLife}`;
+      button.append(label, life);
+      button.addEventListener("click", () => selectDifficulty(difficulty.id));
+      container.appendChild(button);
+    });
+    selectDifficulty(selectedDifficultyId);
+  }
+
+  function selectDifficulty(id) {
+    const difficulty = getDifficulty(id);
+    selectedDifficultyId = difficulty.id;
+    document.querySelectorAll(".difficulty-button").forEach((button) => {
+      const selected = button.dataset.difficulty === selectedDifficultyId;
+      button.classList.toggle("selected", selected);
+      button.setAttribute("aria-pressed", String(selected));
+    });
+    document.getElementById("difficulty-description").textContent = difficulty.description;
+  }
+
+  function createGame() {
     game = new Phaser.Game({
       type: Phaser.AUTO,
       parent: "game",
@@ -1398,5 +1502,36 @@
       scene: GameScene
     });
     window.__FREEZE_QUEEN_GAME__ = game;
+  }
+
+  function startGame() {
+    resetInputState();
+    activeDifficultyId = selectedDifficultyId;
+    document.getElementById("start-screen").classList.add("hidden");
+    document.getElementById("game-shell").classList.remove("awaiting-start");
+    audio.beginMusic(true);
+    if (game) game.destroy(true);
+    createGame();
+  }
+
+  function showStartScreen() {
+    resetInputState();
+    if (game) {
+      game.destroy(true);
+      game = null;
+      window.__FREEZE_QUEEN_GAME__ = null;
+    }
+    document.getElementById("result").classList.add("hidden");
+    document.getElementById("next-stage-button").classList.add("hidden");
+    document.getElementById("game-shell").classList.add("awaiting-start");
+    document.getElementById("start-screen").classList.remove("hidden");
+    audio.prepareForTitle();
+    window.requestAnimationFrame(() => document.getElementById("start-button").focus({ preventScroll: true }));
+  }
+
+  window.addEventListener("load", () => {
+    bindViewportSize();
+    bindControls();
+    showStartScreen();
   });
 }());
