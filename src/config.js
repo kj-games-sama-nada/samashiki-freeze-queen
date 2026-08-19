@@ -140,6 +140,12 @@
     audio: {
       enabledByDefault: true,
       masterVolume: 0.24,
+      music: {
+        path: "assets/audio/ave-maria-john-michel.mp3",
+        volume: 0.15,
+        loop: true,
+        preload: "metadata"
+      },
       attackMs: 8,
       releaseMs: 28,
       sounds: {

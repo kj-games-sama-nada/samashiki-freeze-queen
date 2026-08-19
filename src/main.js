@@ -13,11 +13,36 @@
       this.enabled = settings.enabledByDefault;
       this.context = null;
       this.masterGain = null;
-      this.supported = Boolean(window.AudioContext || window.webkitAudioContext);
+      this.sfxSupported = Boolean(window.AudioContext || window.webkitAudioContext);
+      this.music = settings.music?.path ? new Audio() : null;
+      this.musicAvailable = Boolean(this.music);
+      this.userActivated = false;
+      this.suspended = false;
+      this.supported = this.sfxSupported || this.musicAvailable;
+
+      if (this.music) {
+        this.music.loop = settings.music.loop !== false;
+        this.music.volume = settings.music.volume;
+        this.music.preload = settings.music.preload || "metadata";
+        this.music.src = settings.music.path;
+        this.music.id = "bgm-audio";
+        this.music.hidden = true;
+        this.music.setAttribute("aria-hidden", "true");
+        document.body.appendChild(this.music);
+        this.music.addEventListener("error", () => {
+          this.musicAvailable = false;
+          this.supported = this.sfxSupported;
+          this.updateButton();
+          console.warn("BGMを読み込めなかったため、効果音のみで続行します。");
+        });
+      }
     }
 
     unlock() {
+      this.userActivated = true;
       if (!this.enabled || !this.supported) return Promise.resolve(false);
+      this.startMusic();
+      if (!this.sfxSupported) return Promise.resolve(true);
       try {
         if (!this.context) {
           const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -29,19 +54,30 @@
         const resumeResult = this.context.state === "suspended" ? this.context.resume() : Promise.resolve();
         return Promise.resolve(resumeResult).then(() => this.context.state === "running").catch(() => false);
       } catch {
-        this.supported = false;
+        this.sfxSupported = false;
+        this.supported = this.musicAvailable;
         this.updateButton();
-        return Promise.resolve(false);
+        return Promise.resolve(this.musicAvailable);
       }
     }
 
     play(name) {
       const sound = this.settings.sounds[name];
-      if (!this.enabled || !sound) return;
+      if (!this.enabled || !this.sfxSupported || !sound) return;
       this.unlock().then((ready) => {
-        if (!ready || !this.enabled) return;
+        if (!ready || !this.enabled || !this.context) return;
         sound.notes.forEach((note) => this.playNote(note));
       });
+    }
+
+    startMusic() {
+      if (!this.music || !this.musicAvailable || !this.enabled || this.suspended) {
+        return Promise.resolve(false);
+      }
+      if (!this.music.paused) return Promise.resolve(true);
+      this.music.volume = this.settings.music.volume;
+      const playResult = this.music.play();
+      return Promise.resolve(playResult).then(() => true).catch(() => false);
     }
 
     playNote(note) {
@@ -77,8 +113,20 @@
           this.context.currentTime
         );
       }
+      if (!this.enabled) {
+        this.music?.pause();
+      }
       this.updateButton();
       if (this.enabled) this.unlock();
+    }
+
+    setSuspended(suspended) {
+      this.suspended = Boolean(suspended);
+      if (this.suspended) {
+        this.music?.pause();
+      } else if (this.enabled && this.userActivated) {
+        this.startMusic();
+      }
     }
 
     toggle() {
@@ -91,14 +139,14 @@
       if (!this.supported) {
         button.textContent = "音 無効";
         button.disabled = true;
-        button.setAttribute("aria-label", "このブラウザでは効果音を再生できません");
+        button.setAttribute("aria-label", "このブラウザでは音声を再生できません");
         return;
       }
       button.disabled = false;
       button.textContent = this.enabled ? "音 ON" : "音 OFF";
       button.classList.toggle("muted", !this.enabled);
       button.setAttribute("aria-pressed", String(this.enabled));
-      button.setAttribute("aria-label", this.enabled ? "効果音をオフにする" : "効果音をオンにする");
+      button.setAttribute("aria-label", this.enabled ? "BGMと効果音をオフにする" : "BGMと効果音をオンにする");
     }
   }
 
@@ -1237,6 +1285,7 @@
   function bindControls() {
     const unlockAudio = () => audio.unlock();
     document.addEventListener("pointerdown", unlockAudio, { capture: true, passive: true });
+    document.addEventListener("click", unlockAudio, { capture: true, passive: true });
     document.addEventListener("keydown", unlockAudio, { capture: true, passive: true });
     const soundButton = document.getElementById("sound-toggle");
     audio.updateButton();
@@ -1314,6 +1363,7 @@
     window.addEventListener("blur", resetInputState);
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) resetInputState();
+      audio.setSuspended(document.hidden);
     });
     ["touchmove", "gesturestart"].forEach((eventName) => {
       document.addEventListener(eventName, (event) => event.preventDefault(), { passive: false });
