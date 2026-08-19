@@ -17,7 +17,7 @@
         blinkIntervalMs: 70
       },
       spriteSheet: {
-        path: "assets/images/sama.png?v=phase1-pixel-final-5",
+        path: "assets/images/sama.png?v=character-restore-1",
         frameWidth: 32,
         frameHeight: 32,
         columns: 4,
@@ -50,7 +50,7 @@
         ]
       },
       spriteSheet: {
-        path: "assets/images/enemy.png?v=enemy-4dir-1",
+        path: "assets/images/enemy.png?v=character-restore-1",
         frameWidth: 32,
         frameHeight: 32,
         columns: 4,
@@ -59,7 +59,7 @@
         directionStartFrames: { down: 0, left: 4, right: 8, up: 12 }
       },
       frozenSpriteSheet: {
-        path: "assets/images/ice-statue.png?v=enemy-4dir-1",
+        path: "assets/images/ice-statue.png?v=character-restore-1",
         frameWidth: 32,
         frameHeight: 32,
         columns: 4,
@@ -74,7 +74,7 @@
       size: 12,
       spawnOffset: 10,
       damage: 1,
-      texture: { path: "assets/images/freeze-shot.png?v=phase1-pixel-final-5", width: 16, height: 16 }
+      texture: { path: "assets/images/freeze-shot.png?v=character-restore-1", width: 16, height: 16 }
     },
     special: {
       maxGauge: 100,
@@ -141,7 +141,7 @@
       enabledByDefault: true,
       masterVolume: 0.24,
       music: {
-        path: "assets/audio/ave-maria-john-michel.mp3",
+        path: "assets/audio/ave-maria-schubert-vocal.mp3",
         volume: 0.15,
         loop: true,
         preload: "metadata"
