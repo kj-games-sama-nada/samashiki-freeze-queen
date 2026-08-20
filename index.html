@@ -2,15 +2,20 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#10182f">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>さまちゃんと凍結の女王</title>
   <link rel="icon" href="data:,">
+  <link rel="manifest" href="manifest.webmanifest?v=immersive-mobile-1">
+  <link rel="apple-touch-icon" href="assets/images/app-icon.svg?v=immersive-mobile-1">
   <link rel="preload" href="assets/images/sama.png?v=character-restore-1" as="image">
   <link rel="preload" href="assets/images/enemy.png?v=character-restore-1" as="image">
   <link rel="preload" href="assets/images/ice-statue.png?v=character-restore-1" as="image">
   <link rel="preload" href="assets/images/freeze-shot.png?v=character-restore-1" as="image">
-  <link rel="stylesheet" href="style.css?v=mobile-difficulty-tap-1">
+  <link rel="stylesheet" href="style.css?v=immersive-mobile-1">
 </head>
 <body>
   <main id="game-shell" class="awaiting-start" aria-label="さまちゃんと凍結の女王">
@@ -41,6 +46,7 @@
         <div class="hud-item"><span>さまちゃん</span><strong id="player-life">♥♥♥♥♥</strong></div>
         <div class="hud-item enemy"><span id="enemy-label">敵</span><strong id="enemy-life">♥♥♥♥♥</strong></div>
         <div class="hud-item gauge"><span>必殺</span><div><i id="special-fill"></i></div></div>
+        <button id="fullscreen-toggle" type="button" aria-label="全画面表示にする" aria-pressed="false">全画面</button>
         <button id="sound-toggle" type="button" aria-label="BGMと効果音をオフにする" aria-pressed="true">音 ON</button>
       </div>
       <div id="stage-label">STAGE 1</div>
@@ -54,6 +60,7 @@
           <button id="title-button" type="button">タイトルへ</button>
         </div>
       </div>
+      <div id="display-notice" class="hidden" role="status" aria-live="polite"></div>
     </section>
 
     <section id="touch-controls" aria-label="タッチ操作">
@@ -75,6 +82,6 @@
   <noscript>このゲームにはJavaScriptが必要です。</noscript>
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
   <script src="src/config.js?v=start-screen-1"></script>
-  <script src="src/main.js?v=mobile-difficulty-tap-1"></script>
+  <script src="src/main.js?v=immersive-mobile-1"></script>
 </body>
 </html>

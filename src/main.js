@@ -8,6 +8,8 @@
   let game;
   let selectedDifficultyId = S.difficulty?.defaultId || "normal";
   let activeDifficultyId = selectedDifficultyId;
+  let displayNoticeTimer = 0;
+  let hasShownFullscreenGuide = false;
 
   function getDifficulty(id) {
     const options = S.difficulty?.options || {};
@@ -1353,6 +1355,8 @@
       event.preventDefault();
       audio.toggle();
     });
+    bindTapAction(document.getElementById("fullscreen-toggle"), toggleFullscreen);
+    updateFullscreenButton();
 
     document.querySelectorAll("[data-direction]").forEach((button) => {
       const direction = button.dataset.direction;
@@ -1439,12 +1443,121 @@
       if (document.hidden) resetInputState();
       audio.setSuspended(document.hidden);
     });
-    ["touchmove", "gesturestart"].forEach((eventName) => {
+    ["touchmove", "gesturestart", "gesturechange", "gestureend"].forEach((eventName) => {
       document.addEventListener(eventName, (event) => event.preventDefault(), { passive: false });
     });
+    let lastTouchEndAt = 0;
+    document.addEventListener("touchend", (event) => {
+      const now = Date.now();
+      if (now - lastTouchEndAt < 350) event.preventDefault();
+      lastTouchEndAt = now;
+    }, { passive: false });
+    document.addEventListener("dblclick", (event) => event.preventDefault(), { passive: false });
+    document.addEventListener("fullscreenchange", updateFullscreenButton);
+    document.addEventListener("webkitfullscreenchange", updateFullscreenButton);
     document.querySelectorAll(".control, .action").forEach((button) => {
       button.addEventListener("contextmenu", (event) => event.preventDefault());
     });
+  }
+
+  function isStandaloneDisplay() {
+    return window.navigator.standalone === true
+      || window.matchMedia("(display-mode: fullscreen)").matches
+      || window.matchMedia("(display-mode: standalone)").matches;
+  }
+
+  function getFullscreenElement() {
+    return document.fullscreenElement || document.webkitFullscreenElement || null;
+  }
+
+  function isMobileDevice() {
+    const isMobileUserAgent = /Android|iPad|iPhone|iPod|Mobile/i.test(navigator.userAgent);
+    const isIPadDesktopMode = navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+    return isMobileUserAgent || isIPadDesktopMode;
+  }
+
+  function showDisplayNotice(message, durationMs = 6500) {
+    const notice = document.getElementById("display-notice");
+    window.clearTimeout(displayNoticeTimer);
+    notice.textContent = message;
+    notice.classList.remove("hidden");
+    displayNoticeTimer = window.setTimeout(() => notice.classList.add("hidden"), durationMs);
+  }
+
+  function showFullscreenGuide() {
+    if (hasShownFullscreenGuide) return;
+    hasShownFullscreenGuide = true;
+    const isAppleMobile = /iPad|iPhone|iPod/.test(navigator.userAgent)
+      || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    showDisplayNotice(isAppleMobile
+      ? "全画面にできない場合：Safariの共有ボタン →「ホーム画面に追加」→ 追加したアイコンから起動してください。"
+      : "全画面にできない場合：ブラウザメニューの「ホーム画面に追加」または「アプリをインストール」から起動してください。"
+    );
+  }
+
+  function lockLandscapeOrientation() {
+    if (!screen.orientation?.lock) return;
+    screen.orientation.lock("landscape").catch(() => {});
+  }
+
+  function enterFullscreen(showFallback = true) {
+    if (getFullscreenElement() || isStandaloneDisplay()) {
+      updateFullscreenButton();
+      return;
+    }
+    const shell = document.getElementById("game-shell");
+    const request = shell.requestFullscreen || shell.webkitRequestFullscreen;
+    if (!request) {
+      if (showFallback) showFullscreenGuide();
+      updateFullscreenButton();
+      return;
+    }
+    try {
+      const result = request.call(shell);
+      Promise.resolve(result).then(() => {
+        lockLandscapeOrientation();
+        updateFullscreenButton();
+      }).catch(() => {
+        if (showFallback) showFullscreenGuide();
+        updateFullscreenButton();
+      });
+    } catch {
+      if (showFallback) showFullscreenGuide();
+      updateFullscreenButton();
+    }
+  }
+
+  function exitFullscreen() {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+    if (!exit) return;
+    try {
+      Promise.resolve(exit.call(document)).catch(() => {});
+    } catch {
+      // ブラウザ側で解除できない場合は、ブラウザ標準の終了操作へ任せる。
+    }
+  }
+
+  function toggleFullscreen() {
+    if (isStandaloneDisplay()) {
+      showDisplayNotice("ホーム画面モードで全画面表示中です。");
+      return;
+    }
+    if (getFullscreenElement()) {
+      exitFullscreen();
+    } else {
+      enterFullscreen(true);
+    }
+  }
+
+  function updateFullscreenButton() {
+    const button = document.getElementById("fullscreen-toggle");
+    if (!button) return;
+    const active = Boolean(getFullscreenElement()) || isStandaloneDisplay();
+    button.textContent = active ? "解除" : "全画面";
+    button.classList.toggle("fullscreen-active", active);
+    button.setAttribute("aria-pressed", String(active));
+    button.setAttribute("aria-label", active ? "全画面表示を解除する" : "全画面表示にする");
+    scheduleViewportSync();
   }
 
   function bindTapAction(button, action) {
@@ -1522,6 +1635,7 @@
   }
 
   function startGame() {
+    if (isMobileDevice() && !getFullscreenElement() && !isStandaloneDisplay()) enterFullscreen(true);
     resetInputState();
     activeDifficultyId = selectedDifficultyId;
     document.getElementById("start-screen").classList.add("hidden");
