@@ -17,6 +17,14 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+#game-shell,
+#game-shell * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+}
+
 html,
 body {
   width: var(--app-width);
@@ -582,6 +590,21 @@ body {
     0 0 8px rgba(75, 194, 226, .2);
 }
 
+.control {
+  display: grid;
+  place-items: center;
+}
+
+.control::before {
+  content: "";
+  width: 0;
+  height: 0;
+  border-right: calc(var(--control-size) * .13) solid transparent;
+  border-bottom: calc(var(--control-size) * .20) solid #eafaff;
+  border-left: calc(var(--control-size) * .13) solid transparent;
+  filter: drop-shadow(0 2px #0b2749);
+}
+
 .control.pressed,
 .action.pressed {
   transform: scale(.92);
@@ -593,6 +616,9 @@ body {
 .left { grid-area: 2 / 1; border-radius: 12px 3px 3px 12px; }
 .down { grid-area: 2 / 2; border-radius: 3px 3px 12px 12px; }
 .right { grid-area: 2 / 3; border-radius: 3px 12px 12px 3px; }
+.left::before { transform: rotate(-90deg); }
+.right::before { transform: rotate(90deg); }
+.down::before { transform: rotate(180deg); }
 
 .actions {
   position: absolute;
