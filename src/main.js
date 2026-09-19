@@ -27,9 +27,13 @@
       this.enabled = settings.enabledByDefault;
       this.context = null;
       this.masterGain = null;
+      this.musicGain = null;
       this.sfxSupported = Boolean(window.AudioContext || window.webkitAudioContext);
-      this.music = settings.music?.path ? new Audio() : null;
-      this.musicAvailable = Boolean(this.music);
+      this.musicMode = settings.music?.type || (settings.music?.path ? "file" : "none");
+      this.music = this.musicMode === "file" && settings.music?.path ? new Audio() : null;
+      this.musicAvailable = this.musicMode === "chiptune" ? this.sfxSupported : Boolean(this.music);
+      this.musicNodes = new Set();
+      this.musicLoopTimer = 0;
       this.userActivated = false;
       this.suspended = false;
       this.musicRequested = false;
@@ -59,14 +63,20 @@
           console.warn("BGMを読み込めなかったため、効果音のみで続行します。");
         });
         this.music.load();
+      } else if (this.musicMode === "chiptune") {
+        this.updateMusicStatus(this.musicAvailable
+          ? "FC風BGM 準備完了"
+          : "BGMなしでもゲームを開始できます");
       }
     }
 
     unlock() {
       this.userActivated = true;
       if (!this.enabled || !this.supported) return Promise.resolve(false);
-      if (this.musicRequested) this.startMusic();
-      if (!this.sfxSupported) return Promise.resolve(true);
+      if (!this.sfxSupported) {
+        if (this.musicRequested) this.startMusic();
+        return Promise.resolve(this.musicAvailable);
+      }
       try {
         if (!this.context) {
           const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -74,11 +84,19 @@
           this.masterGain = this.context.createGain();
           this.masterGain.gain.setValueAtTime(this.settings.masterVolume, this.context.currentTime);
           this.masterGain.connect(this.context.destination);
+          this.musicGain = this.context.createGain();
+          this.musicGain.gain.setValueAtTime(this.settings.music?.volume ?? 1, this.context.currentTime);
+          this.musicGain.connect(this.masterGain);
         }
         const resumeResult = this.context.state === "suspended" ? this.context.resume() : Promise.resolve();
-        return Promise.resolve(resumeResult).then(() => this.context.state === "running").catch(() => false);
+        return Promise.resolve(resumeResult).then(() => {
+          const ready = this.context.state === "running";
+          if (ready && this.musicRequested) this.startMusic();
+          return ready;
+        }).catch(() => false);
       } catch {
         this.sfxSupported = false;
+        this.musicAvailable = this.musicMode === "file" && Boolean(this.music);
         this.supported = this.musicAvailable;
         this.updateButton();
         return Promise.resolve(this.musicAvailable);
@@ -95,13 +113,129 @@
     }
 
     startMusic() {
-      if (!this.musicRequested || !this.music || !this.musicAvailable || !this.enabled || this.suspended) {
+      if (!this.musicRequested || !this.musicAvailable || !this.enabled || this.suspended) {
         return Promise.resolve(false);
       }
+      if (this.musicMode === "chiptune") {
+        if (!this.context || this.context.state !== "running") return Promise.resolve(false);
+        if (this.musicLoopTimer || this.musicNodes.size) return Promise.resolve(true);
+        this.scheduleChiptuneLoop(this.context.currentTime + 0.05);
+        this.updateMusicStatus(`BGM 再生中：${this.settings.music.title}（FC風）`);
+        return Promise.resolve(true);
+      }
+      if (!this.music) return Promise.resolve(false);
       if (!this.music.paused) return Promise.resolve(true);
       this.music.volume = this.settings.music.volume;
       const playResult = this.music.play();
       return Promise.resolve(playResult).then(() => true).catch(() => false);
+    }
+
+    scheduleChiptuneLoop(startAt) {
+      const music = this.settings.music;
+      const beatSeconds = 60 / Math.max(1, Number(music.bpm) || 82);
+      const gate = Math.min(0.98, Math.max(0.1, Number(music.noteGate) || 0.84));
+      let leadBeat = 0;
+
+      music.lead.forEach(([note, beats]) => {
+        const beatCount = Math.max(0, Number(beats) || 0);
+        if (note) {
+          this.scheduleMusicTone(
+            note,
+            startAt + leadBeat * beatSeconds,
+            beatCount * beatSeconds * gate,
+            music.leadWave,
+            music.leadVolume
+          );
+        }
+        leadBeat += beatCount;
+      });
+
+      const accompanimentStart = startAt + beatSeconds;
+      music.chords.forEach((chord, barIndex) => {
+        const barStart = accompanimentStart + barIndex * 3 * beatSeconds;
+        this.scheduleMusicTone(
+          chord.root,
+          barStart,
+          beatSeconds * 1.3,
+          music.bassWave,
+          music.bassVolume
+        );
+        this.scheduleMusicTone(
+          chord.root,
+          barStart + beatSeconds * 1.5,
+          beatSeconds * 1.15,
+          music.bassWave,
+          music.bassVolume * 0.72
+        );
+        chord.tones.forEach((tone, beatIndex) => {
+          this.scheduleMusicTone(
+            tone,
+            barStart + beatIndex * beatSeconds,
+            beatSeconds * 0.42,
+            music.arpeggioWave,
+            music.arpeggioVolume
+          );
+        });
+      });
+
+      const loopBeats = leadBeat + Math.max(0, Number(music.loopGapBeats) || 0);
+      const nextStartAt = startAt + loopBeats * beatSeconds;
+      if (music.loop !== false) {
+        const scheduleAheadSeconds = 0.2;
+        const waitMs = Math.max(50, (nextStartAt - this.context.currentTime - scheduleAheadSeconds) * 1000);
+        this.musicLoopTimer = window.setTimeout(() => {
+          this.musicLoopTimer = 0;
+          if (this.musicRequested && this.enabled && !this.suspended) {
+            this.scheduleChiptuneLoop(nextStartAt);
+          }
+        }, waitMs);
+      }
+    }
+
+    scheduleMusicTone(noteName, startAt, durationSeconds, wave, volume) {
+      const frequency = this.noteToFrequency(noteName);
+      if (!frequency || !this.context || !this.musicGain) return;
+      const oscillator = this.context.createOscillator();
+      const gain = this.context.createGain();
+      const endAt = startAt + Math.max(0.02, durationSeconds);
+      const attackAt = Math.min(endAt, startAt + 0.006);
+      const releaseAt = Math.max(attackAt, endAt - 0.035);
+
+      oscillator.type = wave || "square";
+      oscillator.frequency.setValueAtTime(frequency, startAt);
+      gain.gain.setValueAtTime(0.0001, startAt);
+      gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume), attackAt);
+      gain.gain.setValueAtTime(Math.max(0.0001, volume), releaseAt);
+      gain.gain.exponentialRampToValueAtTime(0.0001, endAt);
+      oscillator.connect(gain);
+      gain.connect(this.musicGain);
+      this.musicNodes.add(oscillator);
+      oscillator.addEventListener("ended", () => this.musicNodes.delete(oscillator), { once: true });
+      oscillator.start(startAt);
+      oscillator.stop(endAt + 0.01);
+    }
+
+    noteToFrequency(noteName) {
+      const match = /^([A-G])([#b]?)(-?\d+)$/.exec(noteName);
+      if (!match) return 0;
+      const semitones = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+      const accidental = match[2] === "#" ? 1 : (match[2] === "b" ? -1 : 0);
+      const midi = (Number(match[3]) + 1) * 12 + semitones[match[1]] + accidental;
+      return 440 * (2 ** ((midi - 69) / 12));
+    }
+
+    stopMusic() {
+      this.music?.pause();
+      window.clearTimeout(this.musicLoopTimer);
+      this.musicLoopTimer = 0;
+      this.musicNodes.forEach((oscillator) => {
+        try {
+          oscillator.stop();
+        } catch {
+          // すでに終了した予約音は停止済みとして扱う。
+        }
+      });
+      this.musicNodes.clear();
     }
 
     applyMusicStartOffset() {
@@ -129,9 +263,12 @@
 
     prepareForTitle() {
       this.musicRequested = false;
-      this.music?.pause();
+      this.stopMusic();
       this.pendingStartOffset = true;
       this.applyMusicStartOffset();
+      if (this.musicMode === "chiptune" && this.musicAvailable) {
+        this.updateMusicStatus("FC風BGM 準備完了");
+      }
     }
 
     updateMusicStatus(message) {
@@ -173,7 +310,7 @@
         );
       }
       if (!this.enabled) {
-        this.music?.pause();
+        this.stopMusic();
       }
       this.updateButton();
       if (this.enabled) this.unlock();
@@ -182,7 +319,7 @@
     setSuspended(suspended) {
       this.suspended = Boolean(suspended);
       if (this.suspended) {
-        this.music?.pause();
+        this.stopMusic();
       } else if (this.enabled && this.userActivated && this.musicRequested) {
         this.startMusic();
       }
